@@ -210,6 +210,31 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 						tag: `achievement:${data.body.achievement}`,
 					}];
 
+				case 'login':
+					return [i18n.ts._notification.login, {
+						badge: iconUrl('login-2'),
+						data,
+					}];
+
+				case 'exportCompleted': {
+					const entityName = {
+						antenna: i18n.ts.antennas,
+						blocking: i18n.ts.blockedUsers,
+						clip: i18n.ts.clips,
+						customEmoji: i18n.ts.customEmojis,
+						favorite: i18n.ts.favorites,
+						following: i18n.ts.following,
+						muting: i18n.ts.mutedUsers,
+						note: i18n.ts.notes,
+						userList: i18n.ts.lists,
+					} as const satisfies Record<typeof data.body.exportedEntity, string>;
+
+					return [i18n.tsx._notification.exportOfXCompleted({ x: entityName[data.body.exportedEntity] }), {
+						badge: iconUrl('circle-check'),
+						data,
+					}];
+				}
+
 				case 'pollEnded':
 					return [i18n.ts._notification.pollEnded, {
 						body: data.body.note.text ?? '',
@@ -243,36 +268,52 @@ async function composeNotification(data: PushNotificationDataMap[keyof PushNotif
 				data,
 				renotify: true,
 			}];
+		case 'newChatMessage':
+			if (data.body.toRoom != null) {
+				return [`${data.body.toRoom.name}: ${getUserName(data.body.fromUser)}: ${data.body.text}`, {
+					icon: data.body.fromUser.avatarUrl ?? undefined,
+					badge: iconUrl('messages'),
+					tag: `chat:room:${data.body.toRoomId}`,
+					data,
+					renotify: true,
+				}];
+			} else {
+				return [`${getUserName(data.body.fromUser)}: ${data.body.text}`, {
+					icon: data.body.fromUser.avatarUrl ?? undefined,
+					badge: iconUrl('messages'),
+					tag: `chat:user:${data.body.fromUserId}`,
+					data,
+					renotify: true,
+				}];
+			}
 		default:
 			return null;
 	}
 }
 
 export async function createEmptyNotification(): Promise<void> {
-	return new Promise<void>(async res => {
-		const i18n = await (swLang.i18n ?? swLang.fetchLocale());
-
-		await globalThis.registration.showNotification(
-			(new URL(origin)).host,
-			{
-				body: `Misskey v${_VERSION_}`,
-				silent: true,
-				badge: iconUrl('null'),
-				tag: 'read_notification',
-				actions: [
-					{
-						action: 'markAllAsRead',
-						title: i18n.ts.markAllAsRead,
-					},
-					{
-						action: 'settings',
-						title: i18n.ts.notificationSettings,
-					},
-				],
-				data: {},
-			},
-		);
-
+	const i18n = await (swLang.i18n ?? swLang.fetchLocale());
+	await globalThis.registration.showNotification(
+		(new URL(origin)).host,
+		{
+			body: `Misskey v${_VERSION_}`,
+			silent: true,
+			badge: iconUrl('null'),
+			tag: 'read_notification',
+			actions: [
+				{
+					action: 'markAllAsRead',
+					title: i18n.ts.markAllAsRead,
+				},
+				{
+					action: 'settings',
+					title: i18n.ts.notificationSettings,
+				},
+			],
+			data: {},
+		},
+	);
+	return new Promise<void>(res => {
 		setTimeout(async () => {
 			try {
 				await closeNotificationsByTags(['user_visible_auto_notification']);

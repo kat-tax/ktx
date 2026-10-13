@@ -8,7 +8,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { IsNull } from 'typeorm';
 import { format as dateFormat } from 'date-fns';
 import mime from 'mime-types';
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 import { DI } from '@/di-symbols.js';
 import type { EmojisRepository, UsersRepository } from '@/models/_.js';
 import type { Config } from '@/config.js';
@@ -16,6 +16,7 @@ import type Logger from '@/logger.js';
 import { DriveService } from '@/core/DriveService.js';
 import { createTemp, createTempDir } from '@/misc/create-temp.js';
 import { DownloadService } from '@/core/DownloadService.js';
+import { NotificationService } from '@/core/NotificationService.js';
 import { bindThis } from '@/decorators.js';
 import { QueueLoggerService } from '../QueueLoggerService.js';
 import type * as Bull from 'bullmq';
@@ -37,6 +38,7 @@ export class ExportCustomEmojisProcessorService {
 		private driveService: DriveService,
 		private downloadService: DownloadService,
 		private queueLoggerService: QueueLoggerService,
+		private notificationService: NotificationService,
 	) {
 		this.logger = this.queueLoggerService.logger.createSubLogger('export-custom-emojis');
 	}
@@ -121,10 +123,10 @@ export class ExportCustomEmojisProcessorService {
 		metaStream.end();
 
 		// Create archive
-		await new Promise<void>(async (resolve) => {
-			const [archivePath, archiveCleanup] = await createTemp();
+		const [archivePath, archiveCleanup] = await createTemp();
+		await new Promise<void>((resolve) => {
 			const archiveStream = fs.createWriteStream(archivePath);
-			const archive = archiver('zip', {
+			const archive = new ZipArchive({
 				zlib: { level: 0 },
 			});
 			archiveStream.on('close', async () => {
@@ -134,6 +136,12 @@ export class ExportCustomEmojisProcessorService {
 				const driveFile = await this.driveService.addFile({ user, path: archivePath, name: fileName, force: true });
 
 				this.logger.succ(`Exported to: ${driveFile.id}`);
+
+				this.notificationService.createNotification(user.id, 'exportCompleted', {
+					exportedEntity: 'customEmoji',
+					fileId: driveFile.id,
+				});
+
 				cleanup();
 				archiveCleanup();
 				resolve();

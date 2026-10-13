@@ -37,7 +37,7 @@ import EmA from '@/components/EmA.vue';
 import EmAvatar from '@/components/EmAvatar.vue';
 import EmNoteHeader from '@/components/EmNoteHeader.vue';
 import EmSubNoteContent from '@/components/EmSubNoteContent.vue';
-import { notePage } from '@/utils.js';
+import { notePage } from '@@/js/note.js';
 import { misskeyApi } from '@/misskey-api.js';
 import { i18n } from '@/i18n.js';
 import EmMfm from '@/components/EmMfm.js';
@@ -123,7 +123,7 @@ if (props.detail) {
 }
 
 .reply, .more {
-	border-left: solid 0.5px var(--divider);
+	border-left: solid 0.5px var(--MI_THEME-divider);
 	margin-top: 10px;
 }
 
@@ -144,7 +144,7 @@ if (props.detail) {
 .muted {
 	text-align: center;
 	padding: 8px !important;
-	border: 1px solid var(--divider);
+	border: 1px solid var(--MI_THEME-divider);
 	margin: 8px 8px 0 8px;
 	border-radius: 8px;
 }
